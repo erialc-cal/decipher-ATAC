@@ -313,17 +313,18 @@ class Decipher_with_ATAC(nn.Module):
         x = torch.log1p(x)
         y = torch.log1p(y)
         
-        zjoint_loc, _ = self.encoder_x_to_zxzs(x)
+        zjoint_loc, zjoint_var = self.encoder_x_to_zxzs(x)
         zs_loc =  zjoint_loc[:,:self.config.dim_z]
         zx_loc = zjoint_loc[:,self.config.dim_z:]
-        zy_loc, _ = self.encoder_y_to_zy(y)
+        zy_loc, zy_var = self.encoder_y_to_zy(y)
         zsy = torch.cat([zs_loc, zy_loc, y], dim=-1)
         zx = torch.cat([zx_loc,x],dim=-1)
         
-        vs_loc, _ = self.encoder_zsy_to_v(zsy)
-        vx_loc, _ = self.encoder_zx_to_v(zx)
+        vs_loc, vs_var = self.encoder_zsy_to_v(zsy)
+        vx_loc, vx_var = self.encoder_zx_to_v(zx)
     
-        return  zx_loc.detach().numpy(), zy_loc.detach().numpy(), zs_loc.detach().numpy(), vx_loc.detach().numpy(), vs_loc.detach().numpy()
+        return  zx_loc.detach().numpy(), zy_loc.detach().numpy(), zs_loc.detach().numpy(), vx_loc.detach().numpy(), vs_loc.detach().numpy(), vx_var.detach().numpy(), vs_var.detach().numpy()
+    
  
     def impute_expression_numpy(self, x, y):
         if type(x) == np.ndarray:
