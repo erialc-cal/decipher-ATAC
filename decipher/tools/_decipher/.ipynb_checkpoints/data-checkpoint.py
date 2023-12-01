@@ -7,7 +7,7 @@ import torch
 import torch.nn.functional
 import torch.utils.data
 
-from decipher.tools._decipher import Decipher, DecipherConfig
+from decipher.tools._decipher.decipher_ATAC import Decipher_with_ATAC, DecipherConfig_withATAC
 from decipher.utils import DECIPHER_GLOBALS, create_decipher_uns_key
 
 logger = logging.getLogger(__name__)
@@ -68,8 +68,8 @@ def decipher_load_model(adata):
     if "run_id" not in adata.uns["decipher"]:
         raise ValueError("No decipher model has been saved for this AnnData object.")
 
-    model_config = DecipherConfig(**adata.uns["decipher"]["config"])
-    model = Decipher(model_config)
+    model_config = DecipherConfig_withATAC(**adata.uns["decipher"]["config"])
+    model = Decipher_with_ATAC(model_config)
     model_run_id = adata.uns["decipher"]["run_id"]
     save_folder = DECIPHER_GLOBALS["save_folder"]
     full_path = os.path.join(save_folder, model_run_id)

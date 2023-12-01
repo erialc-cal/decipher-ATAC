@@ -15,7 +15,7 @@ from decipher.tools._decipher import Decipher_with_ATAC, DecipherConfig_withATAC
 from decipher.tools._decipher.data import (
     decipher_load_model,
     decipher_save_model,
-    make_data_loader_from_adata,
+    make_data_loader_from_tscp,
 )
 from decipher.tools.utils import EarlyStopping
 

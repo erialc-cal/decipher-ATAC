@@ -80,7 +80,7 @@ class Decipher_with_ATAC(nn.Module):
 
         self.config = config
         ### DECODERS
-        # vx ---> zx, vs ----> zs <---- vx, vs ----> zy
+        # vx ---> zx, vs ----> zs, vs ----> zy
         self.decoder_vx_to_zx = ConditionalDenseNN(
             self.config.dim_v, self.config.layers_v_to_z, [self.config.dim_z] * 2
         )
@@ -88,9 +88,9 @@ class Decipher_with_ATAC(nn.Module):
         self.decoder_vy_to_zy = ConditionalDenseNN(
             self.config.dim_v, self.config.layers_v_to_z, [self.config.dim_z] * 2
         )
-        
-        self.decoder_vsvx_to_zs = ConditionalDenseNN(
-            2 * self.config.dim_v, self.config.layers_v_to_z, [self.config.dim_z] * 2
+        # change vs ---> zs
+        self.decoder_vs_to_zs = ConditionalDenseNN(
+            self.config.dim_v, self.config.layers_v_to_z, [self.config.dim_z] * 2
         )
         
         
@@ -173,8 +173,8 @@ class Decipher_with_ATAC(nn.Module):
                 vs = pyro.sample("vs", prior_y)
 
             ### geX variables    
-            vsx = torch.cat([vs,vx],dim=-1)
-            zs_loc, zs_scale = self.decoder_vsvx_to_zs(vsx, context=context)
+            #vsx = torch.cat([vs,vx],dim=-1)
+            zs_loc, zs_scale = self.decoder_vs_to_zs(vs, context=context)
 
             zs_scale = softplus(zs_scale)
             zs = pyro.sample("zs", dist.Normal(zs_loc, zs_scale).to_event(1))
