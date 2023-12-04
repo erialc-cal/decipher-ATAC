@@ -325,6 +325,26 @@ class Decipher_with_ATAC(nn.Module):
     
         return  zx_loc.detach().numpy(), zy_loc.detach().numpy(), zs_loc.detach().numpy(), vx_loc.detach().numpy(), vs_loc.detach().numpy(), vx_var.detach().numpy(), vs_var.detach().numpy()
     
+    
+    def ppc_x_and_y(self, x: np.array. y:np.array):
+        """Compute posterior predictive samples to check for our model
+
+        Parameters
+        ----------
+        x : np.ndarray or torch.Tensor
+            Input data of shape (n_cells, n_genes).
+        y : np.ndarray or torch.Tensor
+            Input data of shape (n_cells, n_atac).
+        Returns
+        -------
+        x_sample : np.ndarray
+            sample of x with learned parameters
+        y_sample : np.ndarray
+            sample of y with learned parameters
+        """
+
+        
+        
  
     def impute_expression_numpy(self, x, y):
         if type(x) == np.ndarray:

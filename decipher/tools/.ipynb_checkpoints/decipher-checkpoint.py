@@ -184,36 +184,7 @@ def _decipher_to_adata(decipher, rnadata, atacdata):
     `adata.obsm['decipher_z']`: ndarray
         The decipher z space.
     """
-    decipher.eval()
-    latent_zx, latent_zy, latent_zs, latent_vx, latent_vs = decipher.compute_v_z_numpy(rnadata.X.toarray(), atacdata.X.toarray())
-
-    rnadata.obsm["decipher_vx"] = latent_vx
-    atacdata.obsm["decipher_vs"] = latent_vs
-    logging.info("Added `.obsm['decipher_v']`: the Decipher v space.")
-
-    
-    rnadata.obsm["decipher_zx"] = latent_zx
-    atacdata.obsm["decipher_zs"] =latent_zs
-    atacdata.obsm["decipher_zy"] = latent_zy
-    logging.info("Added `.obsm['decipher_z']`: the Decipher z space.")
-
-def _decipher_to_adata_var(decipher, rnadata, atacdata):
-    """Compute the variances of decipher v and z spaces from the decipher model. Add them to `adata.obsm`.
-
-    Parameters
-    ----------
-    decipher: Decipher
-        The decipher model.
-    adata: sc.AnnData
-        The annotated data matrix.
-
-    Returns
-    -------
-    `adata.obsm['decipher_v']`: ndarray
-        The decipher v space.
-    `adata.obsm['decipher_z']`: ndarray
-        The decipher z space.
-    """
+ 
     decipher.eval()
     latent_zx, latent_zy, latent_zs, latent_vx, latent_vs, vx_var, vs_var = decipher.compute_v_z_numpy(rnadata.X.toarray(), atacdata.X.toarray())
 
