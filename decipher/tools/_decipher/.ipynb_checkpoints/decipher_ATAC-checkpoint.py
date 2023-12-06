@@ -325,6 +325,7 @@ class Decipher_with_ATAC(nn.Module):
     
         return  zx_loc.detach().numpy(), zy_loc.detach().numpy(), zs_loc.detach().numpy(), vx_loc.detach().numpy(), vs_loc.detach().numpy(), vx_var.detach().numpy(), vs_var.detach().numpy()
     
+  
  
     def impute_expression_numpy(self, x, y):
         if type(x) == np.ndarray:

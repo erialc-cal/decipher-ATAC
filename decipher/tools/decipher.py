@@ -158,16 +158,21 @@ def decipherATAC_train(
             break
 
         if plot_every_k_epoch > 0 and (epoch % plot_every_k_epoch == 0):
-            _decipher_to_adata(decipher, rnadata, atacdata)
+            _decipher_to_multiomics(decipher, rnadata, atacdata)
             plot_decipher_v(atacdata, basis="decipher_vs", **plot_kwargs)
             plot_decipher_v(rnadata, basis="decipher_vx", **plot_kwargs)
             plt.show()
 
+        if early_stopping.has_stopped():
+            logger.info("Early stopping has been triggered.")
+        _decipher_to_multiomics(decipher, rnadata, atacdata)
+        decipher_save_model(rnadata, decipher)
+        decipher_save_model(atacdata, decipher)
 
     return decipher, val_losses
 
 
-def _decipher_to_adata(decipher, rnadata, atacdata):
+def _decipher_to_multiomics(decipher, rnadata, atacdata):
     """Compute the decipher v and z spaces from the decipher model. Add them to `adata.obsm`.
 
     Parameters
@@ -199,3 +204,5 @@ def _decipher_to_adata(decipher, rnadata, atacdata):
     atacdata.obsm["decipher_zs"] =latent_zs
     atacdata.obsm["decipher_zy"] = latent_zy
     logging.info("Added `.obsm['decipher_z']`: the Decipher z space.")
+
+    
