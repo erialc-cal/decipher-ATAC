@@ -1,6 +1,6 @@
 # Decipher-ATAC: extension of decipher to transcriptomics
 
- <img src="https://github.com/erialc-cal/decipher-ATAC/assets/61749901/7d31e498-bcac-4925-9d04-bab8269fa0ca" width="250" height="300">
+ <img src="https://github.com/erialc-cal/decipher-ATAC/blob/main/figs/decipher-architecture.svg" width="1200" height="700">
 
 Runs similarly as for decipher but with two anndata datasets (h5ad) with corresponding cells: assume that `rnadata` is our gene expression data and `atacdata` our ATAC observations. 
 
