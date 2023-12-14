@@ -206,3 +206,138 @@ def _decipher_to_multiomics(decipher, rnadata, atacdata):
     logging.info("Added `.obsm['decipher_z']`: the Decipher z space.")
 
     
+
+
+def rot(t, u=1):
+    if u not in [-1, 1]:
+        raise ValueError("u must be -1 or 1")
+    return np.array([[np.cos(t), np.sin(t) * u], [-np.sin(t), np.cos(t) * u]])
+
+
+def decipher_rotate_space(
+    adata,
+    v1_col=None,
+    v1_order=None,
+    v2_col=None,
+    v2_order=None,
+    auto_flip_decipher_z=True,
+):
+    """Rotate and flip the decipher space v to maximize the correlation of each decipher component
+    with provided columns values from `adata.obs` (e.g. pseudo-time, cell state progression, etc.)
+
+    Parameters
+    ----------
+    adata: sc.AnnData
+       The annotated data matrix.
+    v1_col: str, optional
+        Column name in `adata.obs` to align the first decipher component with.
+        If None, only align the second component (or does not align at all if `v2` is also None).
+    v1_order: list, optional
+        List of values in `adata.obs[v1_col]`. The rotation will attempt to align these values in
+        order along the v1 component. Must be provided if `adata.obs[v1_col]` is not numeric.
+    v2_col: str, optional
+        Column name in `adata.obs` to align the second decipher component with.
+        If None, only align the first component (or does not align at all if `v1` is also None).
+    v2_order: list, optional
+        List of values in `adata.obs[v2_col]`. The rotation will attempt to align these values in
+        order along the v2 component. Must be provided if `adata.obs[v2_col]` is not numeric.
+    auto_flip_decipher_z: bool, default True
+        If True, flip each z to be correlated positively with the components.
+
+    Returns
+    -------
+    `adata.obsm['decipher_v']`: ndarray
+        The decipher v space after rotation.
+    `adata.obsm['decipher_z']`: ndarray
+        The decipher z space after flipping.
+    `adata.uns['decipher']['rotation']`: ndarray
+        The rotation matrix used to rotate the decipher v space.
+    `adata.obsm['decipher_v_not_rotated']`: ndarray
+        The decipher v space before rotation.
+    `adata.obsm['decipher_z_not_rotated']`: ndarray
+        The decipher z space before flipping.
+    """
+    decipher = decipher_load_model(adata)
+    _decipher_to_adata(decipher, adata)
+
+    def process_col_obs(v_col, v_order):
+        if v_col is not None:
+            v_obs = adata.obs[v_col]
+            if v_order is not None:
+                v_obs = v_obs.astype("category").cat.set_categories(v_order)
+                v_obs = v_obs.cat.codes.replace(-1, np.nan)
+            v_valid_cells = ~v_obs.isna()
+            v_obs = v_obs[v_valid_cells].astype(float)
+            return v_obs, v_valid_cells
+        return None, None
+
+    v1_obs, v1_valid_cells = process_col_obs(v1_col, v1_order)
+    v2_obs, v2_valid_cells = process_col_obs(v2_col, v2_order)
+
+    def score_rotation(r):
+        rotated_space = adata.obsm["decipher_v"] @ r
+        score = 0
+        if v1_col is not None:
+            score += np.corrcoef(rotated_space[v1_valid_cells, 0], v1_obs)[1, 0]
+            score -= np.abs(np.corrcoef(rotated_space[v1_valid_cells, 1], v1_obs)[1, 0])
+        if v2_col is not None:
+            score += np.corrcoef(rotated_space[v2_valid_cells, 1], v2_obs)[1, 0]
+            score -= np.abs(np.corrcoef(rotated_space[v2_valid_cells, 0], v2_obs)[1, 0])
+        return score
+
+    if v1_col is not None or v2_col is not None:
+        rotation_scores = []
+        for t in np.linspace(0, 2 * np.pi, 100):
+            for u in [1, -1]:
+                rotation = rot(t, u)
+                rotation_scores.append((score_rotation(rotation), rotation))
+        best_rotation = max(rotation_scores, key=lambda x: x[0])[1]
+
+        adata.obsm["decipher_v_not_rotated"] = adata.obsm["decipher_v"].copy()
+        adata.obsm["decipher_v"] = adata.obsm["decipher_v"] @ best_rotation
+        adata.uns["decipher"]["rotation"] = best_rotation
+
+    if auto_flip_decipher_z:
+        # flip each z to be correlated positively with the components
+        dim_z = adata.obsm["decipher_z"].shape[1]
+        z_v_corr = np.corrcoef(adata.obsm["decipher_z"], y=adata.obsm["decipher_v"], rowvar=False)
+        z_sign_correction = np.sign(z_v_corr[:dim_z, dim_z:].sum(axis=1))
+        adata.obsm["decipher_z_not_rotated"] = adata.obsm["decipher_z"].copy()
+        adata.obsm["decipher_z"] = adata.obsm["decipher_z"] * z_sign_correction
+
+
+def decipher_gene_imputation(adata):
+    """Impute gene expression from the decipher model.
+
+    Parameters
+    ----------
+    adata: sc.AnnData
+        The annotated data matrix.
+
+    Returns
+    -------
+    `adata.layers['decipher_imputed']`: ndarray
+        The imputed gene expression.
+    """
+    decipher = decipher_load_model(adata)
+    imputed = decipher.impute_gene_expression_numpy(adata.X.toarray())
+    adata.layers["decipher_imputed"] = imputed
+    logging.info("Added `.layers['imputed']`: the Decipher imputed data.")
+
+
+def decipher_and_gene_covariance(adata):
+    if "decipher_imputed" not in adata.layers:
+        decipher_gene_imputation(adata)
+    gene_expression_imputed = adata.layers["decipher_imputed"]
+    adata.varm["decipher_v_gene_covariance"] = np.cov(
+        gene_expression_imputed,
+        y=adata.obsm["decipher_v"],
+        rowvar=False,
+    )[: adata.X.shape[1], adata.X.shape[1]:]
+    logging.info("Added `.varm['decipher_v_gene_covariance']`: the covariance between Decipher v and each gene.")
+    adata.varm["decipher_z_gene_covariance"] = np.cov(
+        gene_expression_imputed,
+        y=adata.obsm["decipher_z"],
+        rowvar=False,
+    )[: adata.X.shape[1], adata.X.shape[1]:]
+    logging.info("Added `.varm['decipher_z_gene_covariance']`: the covariance between Decipher z and each gene.")
