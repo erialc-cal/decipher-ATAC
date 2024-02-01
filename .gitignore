@@ -1,3 +1,5 @@
 
 .DS_Store
 *.pt
+examples/.ipynb_checkpoints/architecture_test-checkpoint.ipynb
+examples/architecture_test.ipynb
